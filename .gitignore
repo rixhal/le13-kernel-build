@@ -1,0 +1,4 @@
+le13-kernel-build/
+kernel-src/
+*.img
+build-output/
