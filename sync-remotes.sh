@@ -1,26 +1,16 @@
-#!/bin/bash
-# sync-to-remotes.sh — Läuft nach jedem Build/Auto-Update
-# Committed + pushed zu beiden Remotes
+#!/usr/bin/env bash
+# Sync to both remotes (GitHub + Forgejo)
+set -euo pipefail
 
-set -e
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+BRANCH="${1:-main}"
+MSG="${2:-chore: isa-build repo update}"
 
-echo "=== Syncing to remotes ==="
+echo "=== Sync to both remotes (branch: $BRANCH) ==="
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo "Changes detected — committing..."
-    git add -A
-    git commit -m "auto: $(date +%Y-%m-%d) — build $(cat build-output/BUILD_INFO.txt 2>/dev/null | grep 'Kernel commit:' | head -1 || echo 'update')"
-else
-    echo "No changes to commit"
-fi
+git add -A
+git commit -m "$MSG" || echo "Nothing to commit"
 
-echo "→ GitHub"
-git push origin main 2>&1 | tail -1
+git push origin "$BRANCH" 2>/dev/null && echo "origin (GitHub): OK" || echo "origin: skippped"
+git push forgejo "$BRANCH" 2>/dev/null && echo "forgejo: OK" || echo "forgejo: skipped"
 
-echo "→ Forgejo"
-git push forgejo main 2>&1 | tail -1
-
-echo ""
-echo "=== Remotes synced ==="
+echo "=== Sync done ==="

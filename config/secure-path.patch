@@ -1,0 +1,11 @@
+--- a/src/decrypters/widevine/WVCencSingleSampleDecrypter.cpp
++++ b/src/decrypters/widevine/WVCencSingleSampleDecrypter.cpp
+@@ -161,7 +161,7 @@ void CWVCencSingleSampleDecrypter::GetCapabilities(AP4_DataBuffer* capsData)
+       else
+       {
+         LOG::LogF(LOGDEBUG, "Single decrypt possible");
+-        caps.flags = Capabilities::SUPPORTS_DECODING;
++        caps.flags = Capabilities::SUPPORTS_DECODING | Capabilities::SECURE_PATH | Capabilities::ANNEXB_REQUIRED;
+         caps.flags |= Capabilities::SINGLE_DECRYPT;
+         caps.hdcpVersion = DRM::HDCP_V_MAX;
+         caps.hdcpLimit = m_resolutionLimit;

@@ -14,12 +14,13 @@ LE_CONFIG_URL="https://raw.githubusercontent.com/LibreELEC/LibreELEC.tv/master/p
 curl -sL "$LE_CONFIG_URL" -o "$SCRIPT_DIR/config/le13-defconfig.txt"
 echo "       $(wc -l < "$SCRIPT_DIR/config/le13-defconfig.txt") lines"
 
-# 2. Check which kernel commit LE13.tv currently uses
+# 2. Check which kernel commit LE13.tv currently uses for RPi
 echo "[2/3] Checking LE13 kernel version..."
 PKG_MK="https://raw.githubusercontent.com/LibreELEC/LibreELEC.tv/master/packages/linux/package.mk"
-KERNEL_COMMIT=$(curl -sL "$PKG_MK" | grep -A1 'PKG_VERSION' | tail -1 | grep -oP '[a-f0-9]{40}')
+KERNEL_COMMIT=$(curl -sL "$PKG_MK" | awk '/raspberrypi\)/{found=1} found && /PKG_VERSION=/{print; exit}' | grep -oP '[a-f0-9]{40}')
 if [ -z "$KERNEL_COMMIT" ]; then
-    KERNEL_COMMIT=$(curl -sL "$PKG_MK" | grep -oP '(?<=PKG_VERSION=")[a-f0-9]+(?=")' | tail -1)
+    # Fallback: try the second PKG_VERSION (generic one)
+    KERNEL_COMMIT=$(curl -sL "$PKG_MK" | grep -oP '(?<=PKG_VERSION=")[a-f0-9]{40}' | tail -1)
 fi
 echo "       LE13 kernel commit: ${KERNEL_COMMIT:-UNKNOWN}"
 

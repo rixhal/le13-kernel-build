@@ -1,107 +1,59 @@
-#!/bin/bash
-# deploy.sh — Idempotentes Kernel-Deployment auf crackberry5
-# Pattern: Version-Tracker, Rollback, Idempotenz
+#!/usr/bin/env bash
+# le13-isa-build — Deploy ISA .so + Configs auf crackberry5
+# Idempotent, mit Rollback-Backup
+set -euo pipefail
 
-set -e
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BUILD_DIR="$SCRIPT_DIR/build-output"
-TARGET_HOST="${1:-10.10.10.140}"
-TARGET_USER="${2:-root}"
-KERNEL_IMG="$BUILD_DIR/kernel.img"
-VERSION_FILE="/storage/.le13-kernel-version"
-BACKUP_SUFFIX=".bak.$(date +%Y%m%d)"
+TARGET="${1:-crackberry5}"
+ISA_SO="build-output/lib/inputstream.adaptive.so.22.3.14"
 
-echo "=== LE13 Kernel Deployer ==="
-
-# 1. Verify kernel.img exists
-if [ ! -f "$KERNEL_IMG" ]; then
-    echo "ERROR: $KERNEL_IMG not found. Run ./build.sh first."
+if [ ! -f "$ISA_SO" ]; then
+    echo "Keine ISA .so gefunden. Baue zuerst: ./build.sh"
     exit 1
 fi
 
-LOCAL_MD5=$(md5sum "$KERNEL_IMG" | cut -d' ' -f1)
-echo "[1/6] Local kernel: $LOCAL_MD5 ($(du -h "$KERNEL_IMG" | cut -f1))"
+echo "=== Deploy ISA 22.3.14 auf $TARGET ==="
 
-# 2. Read BUILD_INFO
-if [ -f "$BUILD_DIR/BUILD_INFO.txt" ]; then
-    BUILD_VERSION=$(grep "Kernel commit:" "$BUILD_DIR/BUILD_INFO.txt" | head -1)
-    echo "       $BUILD_VERSION"
+# Prüfen ob Target erreichbar
+if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "root@$TARGET" "echo OK" 2>/dev/null; then
+    echo "WARN: Target $TARGET nicht erreichbar"
+    echo "Deploy lokal vorbereitet. Manuell später ausführen:"
+    echo "  scp $ISA_SO root@\$TARGET:/storage/.kodi/addons/inputstream.adaptive/"
+    exit 0
 fi
 
-# 3. Check target status (idempotency)
-echo "[2/6] Checking target at $TARGET_HOST..."
-TARGET_INFO=$(ssh "${TARGET_USER}@${TARGET_HOST}" "
-    if [ -f $VERSION_FILE ]; then cat $VERSION_FILE; else echo 'NO_VERSION_FILE'; fi
-    md5sum /flash/kernel.img 2>/dev/null | cut -d' ' -f1 || echo 'NO_KERNEL'
-    uname -r
-" 2>&1)
+# Backup alter ISA .so
+ssh "root@$TARGET" << 'BCK'
+    ISA_DIR="/storage/.kodi/addons/inputstream.adaptive"
+    for so in "$ISA_DIR"/inputstream.adaptive.so.*; do
+        [ -f "$so" ] || continue
+        bak="${so}.bak.$(date +%Y%m%d-%H%M%S)"
+        cp "$so" "$bak"
+        echo "Backup: $(basename $so) → $(basename $bak)"
+    done
+    # Cleanup alte Backups (max 3)
+    ls -t "$ISA_DIR"/inputstream.adaptive.so.*.bak* 2>/dev/null | tail -n +4 | while read old; do
+        rm -f "$old"
+        echo "Cleanup: $(basename $old)"
+    done
+BCK
 
-TARGET_VER=$(echo "$TARGET_INFO" | head -1)
-TARGET_MD5=$(echo "$TARGET_INFO" | head -2 | tail -1)
-TARGET_UNAME=$(echo "$TARGET_INFO" | tail -1)
+# Kodi stoppen
+ssh "root@$TARGET" 'systemctl stop kodi 2>/dev/null; sleep 1; killall kodi.bin 2>/dev/null; sleep 1'
 
-echo "       Target version: $TARGET_VER"
-echo "       Target MD5:     $TARGET_MD5"
-echo "       Target uname:   $TARGET_UNAME"
+# ISA .so deployen
+scp "$ISA_SO" "root@$TARGET:/storage/.kodi/addons/inputstream.adaptive/"
 
-# 4. Idempotenz-Check
-if [ "$LOCAL_MD5" = "$TARGET_MD5" ]; then
-    echo ""
-    echo "=== IDEMPOTENT: Kernel already deployed (MD5 match) ==="
-    echo "Target has the same kernel.img. Skipping deployment."
-    echo "Run with --force to override."
-    [ "${1:-}" = "--force" ] || exit 0
-fi
+# Configs deployen (guisettings, advancedsettings, playercorefactory, crunchyroll-patch)
+# → wird von deploy-configs.sh gemacht (separat)
 
-# 5. Backup current kernel (rollback)
-echo "[3/6] Backing up current kernel on target..."
-ssh "${TARGET_USER}@${TARGET_HOST}" "
-    mount -o remount,rw /flash
-    if [ -f /flash/kernel.img ]; then
-        cp /flash/kernel.img /flash/kernel.img${BACKUP_SUFFIX}
-        echo '       Backup: kernel.img${BACKUP_SUFFIX}'
-    fi
-    # Keep max 3 backups
-    ls -t /flash/kernel.img.bak.* 2>/dev/null | tail -n +4 | xargs -r rm
-    sync
-"
+# Kodi starten
+ssh "root@$TARGET" 'systemctl start kodi'
 
-# 6. Deploy
-echo "[4/6] Uploading kernel.img ($(du -h "$KERNEL_IMG" | cut -f1))..."
-scp "$KERNEL_IMG" "${TARGET_USER}@${TARGET_HOST}:/storage/kernel-widevine.img"
-
-echo "[5/6] Installing to /flash..."
-ssh "${TARGET_USER}@${TARGET_HOST}" "
-    mount -o remount,rw /flash
-    cp /storage/kernel-widevine.img /flash/kernel.img
-    sync
-    NEW_MD5=\$(md5sum /flash/kernel.img | cut -d' ' -f1)
-    echo \"       Deployed MD5: \$NEW_MD5\"
-    mount -o remount,ro /flash
-"
-
-# 7. Write version marker
-echo "[6/6] Writing version marker..."
-BUILD_DATE=$(date -Iseconds)
-ssh "${TARGET_USER}@${TARGET_HOST}" "
-    cat > $VERSION_FILE << 'VEREOF'
-Build: $BUILD_DATE
-Kernel: $BUILD_VERSION
-Config: CONFIG_DMABUF_HEAPS_RESERVED=y
-Repo: https://github.com/rixhal/le13-kernel-build
-VEREOF
-    cat $VERSION_FILE
-"
+# Verifikation
+sleep 10
+echo "=== Verify ==="
+ssh "root@$TARGET" 'grep -E "Addon Manager.*inputstream" /storage/.kodi/temp/kodi.log | tail -3'
 
 echo ""
-echo "=== DEPLOYMENT COMPLETE ==="
-echo ""
-echo "Rollback:"
-echo "  ssh ${TARGET_USER}@${TARGET_HOST} 'mount -o remount,rw /flash && cp /flash/kernel.img${BACKUP_SUFFIX} /flash/kernel.img && sync'"
-echo ""
-echo "Next: Manual reboot required"
-echo "  ssh ${TARGET_USER}@${TARGET_HOST} 'echo b > /proc/sysrq-trigger'"
-echo ""
-echo "Verify after reboot:"
-echo "  ssh ${TARGET_USER}@${TARGET_HOST} 'modprobe configs; zcat /proc/config.gz | grep DMABUF_HEAPS_RESERVED'"
-echo "  Expected: CONFIG_DMABUF_HEAPS_RESERVED=y"
+echo "Deploy OK"
+echo "Nächster Schritt: deploy-configs.sh ausführen für guisettings/advancedsettings/playercorefactory"
