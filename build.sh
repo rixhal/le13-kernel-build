@@ -71,18 +71,15 @@ cmake .. \
     -DPUGIXML_LIBRARIES=../../deps/pugixml/libpugixml.a \
     -DCMAKE_INSTALL_PREFIX=../../build-output
 
-echo "=== Build ISA ==="
+echo "=== Build ISA === (this takes ~90s)"
 make -j"$(nproc)"
-
-echo "=== Install ==="
-make install
 
 cd ../..
 
 echo ""
-echo "=== Build abgeschlossen ==="
-echo "ISA .so: build-output/lib/inputstream.adaptive.so*"
-ls -la build-output/lib/inputstream.adaptive.so* 2>/dev/null || echo "WARN: Keine .so gefunden"
+echo "=== Build fertig ==="
+echo "ISA .so: $(find build-output/lib -name 'inputstream.adaptive.so*' -type f 2>/dev/null | head -3)"
+echo ""
 
 # Version-Tracker
 COMMIT_HASH=$(cd "$ISA_DIR" && git rev-parse --short HEAD 2>/dev/null || echo "unknown")

@@ -1,56 +1,40 @@
 #!/bin/bash
-# diff-build.sh — Zeigt an, was sich zwischen letztem und aktuellem Build geändert hat
+# diff-build.sh — Zeigt an, was sich seit dem letzten ISA-Build geändert hat
+# Vergleicht nightly, kernel-commit und defconfig mit letztem Build
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build-output"
 CONFIG_DIR="$SCRIPT_DIR/config"
-DIFF_FILE="$BUILD_DIR/CONFIG_DIFF.md"
 
-echo "=== LE13 Kernel Build Diff ==="
+echo "=== LE13 ISA Build Diff ==="
 echo ""
 
-# Check if last build exists
-LAST_INFO="$BUILD_DIR/BUILD_INFO.txt"
-CURRENT_COMMIT=""
+# ISA Version
+ISA_VERSION="$(cat "$SCRIPT_DIR/.isa-build-version" 2>/dev/null || echo 'unbekannt')"
+echo "ISA Build: $ISA_VERSION"
 
-if [ -d "$SCRIPT_DIR/kernel-src/.git" ]; then
-    CURRENT_COMMIT=$(cd "$SCRIPT_DIR/kernel-src" && git log --oneline -1)
+# Letzter Nightly
+if [ -f "$BUILD_DIR/.last-nightly" ]; then
+    echo "Letztes Nightly: $(cat "$BUILD_DIR/.last-nightly")"
 fi
 
-# Config diff
+# Kernel Commit
+if [ -d "$SCRIPT_DIR/kernel-src/.git" ]; then
+    echo "Kernel: $(cd "$SCRIPT_DIR/kernel-src" && git log --oneline -1)"
+fi
+
+# Config
 if [ -f "$CONFIG_DIR/le13-defconfig.txt" ]; then
     CONFIG_LINES=$(wc -l < "$CONFIG_DIR/le13-defconfig.txt")
-    echo "LE13 Defconfig: $CONFIG_LINES lines"
+    echo "Defconfig: $CONFIG_LINES lines"
+    echo "Defconfig MD5: $(md5sum "$CONFIG_DIR/le13-defconfig.txt" | cut -d' ' -f1)"
 fi
 
-# DMABUF_HEAPS status
-if [ -d "$SCRIPT_DIR/kernel-src" ] && [ -f "$SCRIPT_DIR/kernel-src/.config" ]; then
-    echo ""
-    echo "=== DMABUF_HEAPS in working config ==="
-    grep "DMABUF_HEAPS" "$SCRIPT_DIR/kernel-src/.config" || echo "(no .config yet — run build.sh first)"
+# .so
+if find "$BUILD_DIR/lib" -name 'inputstream.adaptive.so*' -type f 2>/dev/null | grep -q .; then
+    echo "ISA .so: $(find "$BUILD_DIR/lib" -name 'inputstream.adaptive.so*' -type f -exec ls -lh {} \; | awk '{print $5, $9}')"
 fi
-
-# Generate diff markdown
-{
-    echo "# Kernel Build Diff — $(date -I)"
-    echo ""
-    echo "## Source"
-    echo "- Kernel: $CURRENT_COMMIT"
-    echo "- Config base: $CONFIG_LINES lines"
-    echo "- Patches applied:"
-    cat "$CONFIG_DIR/delta-reserved-heap.fragment"
-    echo ""
-    echo "## Last build"
-    if [ -f "$LAST_INFO" ]; then
-        echo '```'
-        cat "$LAST_INFO"
-        echo '```'
-    else
-        echo "(no previous build)"
-    fi
-} > "$DIFF_FILE"
 
 echo ""
-echo "Diff saved to: $DIFF_FILE"
-cat "$DIFF_FILE"
+echo "Diff saved to: $BUILD_DIR/BUILD_DIFF.md"

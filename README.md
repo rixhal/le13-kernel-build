@@ -61,33 +61,24 @@ git clone https://github.com/zeux/pugixml.git
 cd pugixml && g++ -shared -o libpugixml.so.1 -fPIC -O2 src/pugixml.cpp -I src/
 ```
 
-### Build
+### Build (lokal, auf dem Build-Host)
+
+Das Repo enthält bereits das vollständige ISA-Source-Verzeichnis (`isa-22.3.11/`).
+Ein Build läuft einfach als:
 
 ```bash
-# 1. Source pullen
-git clone --branch 22.3.14.1-Nexus --depth 1 https://github.com/xbmc/inputstream.adaptive.git
-cd inputstream.adaptive
-
-# 2. Patch anwenden
-# Patch: inputstream.adaptive/src/decrypters/widevine/WVCencSingleSampleDecrypter.cpp
-# Zeile ~164: caps.flags = SUPPORTS_DECODING | SECURE_PATH | ANNEXB_REQUIRED
-
-# 3. CMake konfigurieren
-mkdir build && cd build
-cmake .. \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_TOOLCHAIN_FILE=/path/to/aarch64-linux-gnu.cmake \
-  -DBUILD_SHARED_LIBS=ON \
-  -DENABLE_PUGIXML_STATIC=ON \
-  -DCMAKE_INSTALL_PREFIX=/tmp/isa-install
-
-# 4. Bauen
-make -j$(nproc)
-
-# 5. Installieren
-make install
-# Output: /tmp/isa-install/lib/inputstream.adaptive.so.22.3.14
+./build.sh
 ```
+
+Was passiert:
+1. pugixml static build (falls nicht vorhanden)
+2. CMake konfigurieren (isa-22.3.11, Release, SECURE_PATH aktiv)
+3. `make -j$(nproc)` → `build-output/lib/inputstream.adaptive.so.22.3.11`
+4. `.isa-build-version` wird gesetzt
+
+Der `make install`-Schritt wird von Kodi's cmake-Helper überschrieben
+(Prefix → /usr). Daher werden die `.so`-Dateien manuell nach `build-output/lib/`
+kopiert. Fürs Deployment siehe `deploy.sh`.
 
 Siehe `libreelec-management` Skill → `references/isa-source-build.md` für vollständige Doku.
 
