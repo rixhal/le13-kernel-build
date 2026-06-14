@@ -71,14 +71,18 @@ ssh "root@$TARGET" << 'CR'
     echo "Crunchyroll: force_secure_decoder entfernt"
 CR
 
-echo "--- 5/5: NOSECUREDECODER in ISA-Settings aktivieren ---"
+echo "--- 5/5: NOSECUREDECODER + ISA-Debug-Logging in ISA-Settings aktivieren ---"
 ssh "root@$TARGET" << 'NSD'
     ISA_SETTINGS="/storage/.kodi/addons/inputstream.adaptive/settings.xml"
     if [ -f "$ISA_SETTINGS" ]; then
         cp "$ISA_SETTINGS" "${ISA_SETTINGS}.bak.$(date +%Y%m%d-%H%M%S)"
         # NOSECUREDECODER: value 1 = aktiv (default war 0 = false)
-        sed -i 's|id="NOSECUREDECODER" default="true">0|id="NOSECUREDECODER" default="true">1|' "$ISA_SETTINGS"
-        echo "NOSECUREDECODER auf true gesetzt"
+        sed -i \
+            -e 's|id="NOSECUREDECODER" default="true">0|id="NOSECUREDECODER" default="true">1|' \
+            -e 's|id="debug_logging" default="false">0|id="debug_logging" default="false">1|' \
+            -e 's|id="PR_LOGGING" default="false">0|id="PR_LOGGING" default="false">1|' \
+            "$ISA_SETTINGS"
+        echo "NOSECUREDECODER=true, debug_logging=1, PR_LOGGING=1"
     else
         echo "settings.xml nicht gefunden — ISA ggf. nicht installiert"
     fi
@@ -122,9 +126,11 @@ while true; do
         -e 's|videoplayer.usemediacodecsurface" default="true">true</setting>|videoplayer.usemediacodecsurface" default="false">false</setting>|' \
         "$GS" 2>/dev/null || true
 
-    # 2. ISA-Settings: NOSECUREDECODER aktiv
+    # 2. ISA-Settings: NOSECUREDECODER + Debug-Logging
     [ -f "$ISA" ] && sed -i \
         -e 's|id="NOSECUREDECODER" default="true">0|id="NOSECUREDECODER" default="true">1|' \
+        -e 's|id="debug_logging" default="false">0|id="debug_logging" default="false">1|' \
+        -e 's|id="PR_LOGGING" default="false">0|id="PR_LOGGING" default="false">1|' \
         "$ISA" 2>/dev/null || true
 
     # 3. Crunchyroll: force_secure_decoder entfernen
