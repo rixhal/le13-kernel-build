@@ -4,14 +4,14 @@
 set -euo pipefail
 
 TARGET="${1:-crackberry5}"
-ISA_SO="build-output/lib/inputstream.adaptive.so.22.3.14"
+ISA_SO="build-output/lib/inputstream.adaptive.so.22.3.11"
 
 if [ ! -f "$ISA_SO" ]; then
     echo "Keine ISA .so gefunden. Baue zuerst: ./build.sh"
     exit 1
 fi
 
-echo "=== Deploy ISA 22.3.14 auf $TARGET ==="
+echo "=== Deploy ISA 22.3.11 auf $TARGET ==="
 
 # Prüfen ob Target erreichbar
 if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "root@$TARGET" "echo OK" 2>/dev/null; then

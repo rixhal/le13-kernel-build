@@ -71,6 +71,19 @@ ssh "root@$TARGET" << 'CR'
     echo "Crunchyroll: force_secure_decoder entfernt"
 CR
 
+echo "--- 5/5: NOSECUREDECODER in ISA-Settings aktivieren ---"
+ssh "root@$TARGET" << 'NSD'
+    ISA_SETTINGS="/storage/.kodi/addons/inputstream.adaptive/settings.xml"
+    if [ -f "$ISA_SETTINGS" ]; then
+        cp "$ISA_SETTINGS" "${ISA_SETTINGS}.bak.$(date +%Y%m%d-%H%M%S)"
+        # NOSECUREDECODER: value 1 = aktiv (default war 0 = false)
+        sed -i 's|id="NOSECUREDECODER" default="true">0|id="NOSECUREDECODER" default="true">1|' "$ISA_SETTINGS"
+        echo "NOSECUREDECODER auf true gesetzt"
+    else
+        echo "settings.xml nicht gefunden — ISA ggf. nicht installiert"
+    fi
+NSD
+
 # Kodi starten
 ssh "root@$TARGET" 'systemctl start kodi'
 
