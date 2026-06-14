@@ -53,6 +53,9 @@ else
     NEW_KERNEL=true
 fi
 
+# Return to repo root after kernel-src cd
+cd "$SCRIPT_DIR"
+
 # 3. Check LE13 defconfig for changes
 echo "[3/3] Checking LE13 defconfig..."
 CONFIG_URL="https://raw.githubusercontent.com/LibreELEC/LibreELEC.tv/master/projects/RPi/devices/RPi5/linux/linux.aarch64.conf"

@@ -48,10 +48,8 @@ Leeres JSON `{}` verhindert den Parse-Fehler → `NOSECUREDECODER=true` in Setti
 
 ```
 Build-Host:           crackberry (Pi 4, aarch64 Debian)
-Build-Umgebung:       cross-compile via Docker oder nativ
-ISA-Version:          22.3.14.1
-Bento4-Fork:          xbmc/Bento4 (Richtiger! Nicht lowercase xbmc/Bento4)
-Kodi-Headers:         exakter LE13-Commit (nicht Kodi master)
+ISA-Version:          22.3.11 (stable, SECURE_PATH bereits aktiv)
+Fallback:             Nexus Branch (bei fehlendem isa-22.3.11)
 ```
 
 ### Prerequisites
@@ -92,6 +90,39 @@ make install
 ```
 
 Siehe `libreelec-management` Skill → `references/isa-source-build.md` für vollständige Doku.
+
+## Known Issues
+
+### RGB-Testpattern trotz SECURE_PATH
+
+Der Pi5 (RPi5) hat im LE13-Kernel **keinen H.264-HW-Decoder** (`rpi_h264_dec` fehlt, nur `rpi_hevc_dec`).
+SECURE_PATH signalisiert Kodi "HW-Secure-Decode", aber ohne H.264-HW-Pfad fällt Kodi auf Software-Decode via FFmpeg zurück.
+
+Das sichtbare RGB-Testpattern ist **kein CPU-Overload** — der Pi5-CPU schafft H.264-SW-Decode für 1080p (laut Pi-Gründer).
+Testpattern = **CDM-Verweigerung**: `NOSECUREDECODER=false` + `force_secure_decoder=true` → CDM gibt Testpattern bewusst aus.
+
+**Fix (auf crackberry5):**
+```bash
+# 1. NOSECUREDECODER in ISA-Settings setzen
+sed -i 's|default="true">0|default="true">1|' /storage/.kodi/addons/inputstream.adaptive/settings.xml
+# Value 1 = NOSECUREDECODER aktiviert → CDM liefert echten Content
+
+# 2. force_secure_decoder aus Crunchyroll entfernen
+sed -i 's/item.setProperty("inputstream.adaptive.manifest_config", json.dumps({"force_secure_decoder": True}))/item.setProperty("inputstream.adaptive.manifest_config", "{}")/' /storage/.kodi/addons/plugin.video.crunchyroll/resources/lib/videoplayer.py
+```
+
+### auto-update.sh — cd-Bug (2026-06-14 Fixed)
+
+Nach dem Kernel-Source-Check in `[2/3]` fehlte `cd "$SCRIPT_DIR"`. Das Arbeitsverzeichnis blieb in `kernel-src/`, sodass `./pull-source.sh` und `./build.sh` mit "No such file" (exit 127) fehlschlugen.
+
+**Fix:** `cd "$SCRIPT_DIR"` nach dem Kernel-Check-Block eingefügt (auto-update.sh Zeile 56).
+
+### build.sh — ISA Nexus API-Inkompatibilität (2026-06-14 Fixed)
+
+Der Nexus-Branch `inputstream.adaptive/` nutzt `AP4_AvcFrameParser::ReadGolomb`, das im aktuellen bento4 entfernt wurde → Compile Error.
+`isa-22.3.11/` hat eine lokale `ReadGolomb()`-Funktion und baut sauber. Zudem ist SECURE_PATH in v22.3.11 GetCapabilities() bereits aktiv (kein Patch nötig).
+
+**Fix:** `build.sh` ISA_DIR auf `isa-22.3.11` umgestellt. Bei fehlendem Verzeichnis Fallback auf Nexus-Klon.
 
 ### PITFALLS
 

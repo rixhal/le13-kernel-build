@@ -2,3 +2,10 @@ le13-kernel-build/
 kernel-src/
 *.img
 build-output/
+bento4-*/
+deps/
+inputstream.adaptive/
+isa-22.3.11/build/
+isa-22.3.11/inputstream.adaptive.so*
+isa-22.3.11/build-output/
+research-patches/*.patch

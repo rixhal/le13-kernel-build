@@ -1,11 +1,19 @@
---- a/src/decrypters/widevine/WVCencSingleSampleDecrypter.cpp
-+++ b/src/decrypters/widevine/WVCencSingleSampleDecrypter.cpp
-@@ -161,7 +161,7 @@ void CWVCencSingleSampleDecrypter::GetCapabilities(AP4_DataBuffer* capsData)
-       else
+--- a/wvdecrypter/wvdecrypter.cpp
++++ b/wvdecrypter/wvdecrypter.cpp
+@@ -513,7 +513,7 @@
+   if (!caps.hdcpLimit)
+     caps.hdcpLimit = resolution_limit_;
+ 
+-  //caps.flags |= (SSD_DECRYPTER::SSD_CAPS::SSD_SECURE_PATH | SSD_DECRYPTER::SSD_CAPS::SSD_ANNEXB_REQUIRED);
++  caps.flags |= (SSD_DECRYPTER::SSD_CAPS::SSD_SECURE_PATH | SSD_DECRYPTER::SSD_CAPS::SSD_ANNEXB_REQUIRED);
+   //return;
+ 
+   /*for (auto k : keys_)
+@@ -557,6 +557,7 @@
        {
-         LOG::LogF(LOGDEBUG, "Single decrypt possible");
--        caps.flags = Capabilities::SUPPORTS_DECODING;
-+        caps.flags = Capabilities::SUPPORTS_DECODING | Capabilities::SECURE_PATH | Capabilities::ANNEXB_REQUIRED;
-         caps.flags |= Capabilities::SINGLE_DECRYPT;
-         caps.hdcpVersion = DRM::HDCP_V_MAX;
-         caps.hdcpLimit = m_resolutionLimit;
+         LOG::LogF(SSDDEBUG, "Single decrypt possible");
+         caps.flags |= SSD_DECRYPTER::SSD_CAPS::SSD_SINGLE_DECRYPT;
++        caps.flags |= (SSD_DECRYPTER::SSD_CAPS::SSD_SECURE_PATH | SSD_DECRYPTER::SSD_CAPS::SSD_ANNEXB_REQUIRED);
+         caps.hdcpVersion = 99;
+         caps.hdcpLimit = resolution_limit_;
+       }

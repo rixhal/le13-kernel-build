@@ -34,11 +34,14 @@ if [ ! -f "deps/pugixml/libpugixml.a" ]; then
     echo "pugixml static: OK"
 fi
 
-# ISA Source pullen
-ISA_DIR="inputstream.adaptive"
+# ISA Source verwenden
+ISA_DIR="isa-22.3.11"
 if [ ! -d "$ISA_DIR" ]; then
-    echo "=== Clone ISA 22.3.14.1 ==="
-    git clone --branch 22.3.14.1-Nexus --depth 1 https://github.com/xbmc/inputstream.adaptive.git "$ISA_DIR"
+    echo "=== ISA $ISA_DIR nicht gefunden — Fallback: Nexus Branch klonen ==="
+    ISA_DIR="inputstream.adaptive"
+    if [ ! -d "$ISA_DIR" ]; then
+        git clone --branch Nexus --depth 1 https://github.com/xbmc/inputstream.adaptive.git "$ISA_DIR"
+    fi
 fi
 
 # Patch anwenden (SECURE_PATH in GetCapabilities)
