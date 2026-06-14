@@ -88,6 +88,61 @@ NSD
 ssh "root@$TARGET" 'systemctl start kodi'
 
 echo ""
+echo "--- 6/6: Watchdog pausieren + aktualisieren ---"
+WDG_INTERVAL=2
+ssh "root@$TARGET" << 'WDG'
+    AUTO="/storage/.config/autostart.sh"
+    if [ -f "$AUTO" ]; then
+        cp "$AUTO" "${AUTO}.bak.$(date +%Y%m%d-%H%M%S)"
+        echo "Watchdog: $AUTO gefunden, aktualisiere"
+    else
+        echo "Watchdog: $AUTO nicht gefunden, lege neu an"
+    fi
+
+    cat > /tmp/autostart.sh << 'SCRIPT'
+#!/bin/sh
+# le13-crackberry5 DRMPRIME-Watchdog
+# Setzt alle DRMPRIME-Einstellungen zurueck, solange Kodi sie ueberschreibt
+INTERVAL=2
+
+/usr/bin/kodi-send --action="Quit" 2>/dev/null
+sleep 3
+
+while true; do
+    GS="/storage/.kodi/userdata/guisettings.xml"
+    ISA="/storage/.kodi/addons/inputstream.adaptive/settings.xml"
+    CR="/storage/.kodi/addons/plugin.video.crunchyroll/resources/lib/videoplayer.py"
+
+    # 1. guisettings.xml: Pixel Shaders + SW-Decode
+    [ -f "$GS" ] && sed -i \
+        -e 's|videoplayer.useprimerenderer" default="true">[01]</setting>|videoplayer.useprimerenderer" default="false">2</setting>|' \
+        -e 's|videoplayer.useprimedecoder" default="true">true</setting>|videoplayer.useprimedecoder" default="false">false</setting>|' \
+        -e 's|videoplayer.useprimedecoderforhw" default="true">true</setting>|videoplayer.useprimedecoderforhw" default="false">false</setting>|' \
+        -e 's|videoplayer.usemediacodec" default="true">true</setting>|videoplayer.usemediacodec" default="false">false</setting>|' \
+        -e 's|videoplayer.usemediacodecsurface" default="true">true</setting>|videoplayer.usemediacodecsurface" default="false">false</setting>|' \
+        "$GS" 2>/dev/null || true
+
+    # 2. ISA-Settings: NOSECUREDECODER aktiv
+    [ -f "$ISA" ] && sed -i \
+        -e 's|id="NOSECUREDECODER" default="true">0|id="NOSECUREDECODER" default="true">1|' \
+        "$ISA" 2>/dev/null || true
+
+    # 3. Crunchyroll: force_secure_decoder entfernen
+    [ -f "$CR" ] && sed -i \
+        -e 's/json.dumps({"force_secure_decoder": True})/"{}"/' \
+        "$CR" 2>/dev/null || true
+
+    sleep "$INTERVAL"
+done
+SCRIPT
+
+    cp /tmp/autostart.sh "$AUTO"
+    chmod +x "$AUTO"
+    echo "Watchdog: aktualisiert"
+WDG
+
+echo ""
 echo "=== Configs deployt ==="
 echo "Nächster Schritt: Vor-Ort Crunchyroll testen"
 echo "Verify: ssh $TARGET 'grep LinuxRendererGLES /storage/.kodi/temp/kodi.log | tail -3'"
+echo "Watchdog: /storage/.config/autostart.sh läuft (alle ${WDG_INTERVAL}s)"
