@@ -16,6 +16,7 @@ done
 if [ -n "$missing" ]; then
     echo "Fehlende Pakete:$missing"
     echo "Installiere: sudo apt install$missing"
+    # shellcheck disable=SC2086 # intentional word-splitting for package list
     sudo apt install -y $missing
 fi
 
@@ -71,7 +72,7 @@ cmake .. \
     -DCMAKE_INSTALL_PREFIX=../../build-output
 
 echo "=== Build ISA ==="
-make -j$(nproc)
+make -j"$(nproc)"
 
 echo "=== Install ==="
 make install

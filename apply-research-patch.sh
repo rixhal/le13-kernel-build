@@ -29,20 +29,23 @@ fi
 
 echo "Found research patches:"
 for p in $PATCHES; do
-    echo "  $(basename $p):"
-    cat "$p" | sed 's/^/    /'
+    echo "  $(basename "$p"):"
+    sed 's/^/    /' "$p"
 done
 
 echo ""
 echo "=== Applying research patches to config ==="
 
-# Backup current delta
-cp "$CONFIG_DIR/delta-reserved-heap.fragment" "$CONFIG_DIR/delta-reserved-heap.fragment.bak"
+# Backup or create current delta
+DELTA_FILE="$CONFIG_DIR/delta-reserved-heap.fragment"
+if [ -f "$DELTA_FILE" ]; then
+    cp "$DELTA_FILE" "${DELTA_FILE}.bak"
+fi
 
 # Merge all research patches into the delta
 for p in $PATCHES; do
-    echo "  + $(basename $p)"
-    cat "$p" >> "$CONFIG_DIR/delta-reserved-heap.fragment"
+    echo "  + $(basename "$p")"
+    cat "$p" >> "$DELTA_FILE"
 done
 
 # Dedup

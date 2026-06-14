@@ -6,7 +6,7 @@ ISA_DIR="${1:-inputstream.adaptive}"
 
 for patch in research-patches/*.patch; do
     [ -f "$patch" ] || continue
-    echo "Applying: $(basename $patch)"
+    echo "Applying: $(basename "$patch")"
     cd "$ISA_DIR"
     if patch -p1 --dry-run < "../$patch" 2>/dev/null; then
         patch -p1 < "../$patch"
