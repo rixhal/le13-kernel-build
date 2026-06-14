@@ -71,20 +71,27 @@ ssh "root@$TARGET" << 'CR'
     echo "Crunchyroll: force_secure_decoder entfernt"
 CR
 
-echo "--- 5/5: NOSECUREDECODER + ISA-Debug-Logging in ISA-Settings aktivieren ---"
+echo "--- 5/5: NOSECUREDECODER in ISA-User-Settings aktivieren ---"
 ssh "root@$TARGET" << 'NSD'
-    ISA_SETTINGS="/storage/.kodi/addons/inputstream.adaptive/settings.xml"
-    if [ -f "$ISA_SETTINGS" ]; then
-        cp "$ISA_SETTINGS" "${ISA_SETTINGS}.bak.$(date +%Y%m%d-%H%M%S)"
-        # NOSECUREDECODER: value 1 = aktiv (default war 0 = false)
-        sed -i \
-            -e 's|id="NOSECUREDECODER" default="true">0|id="NOSECUREDECODER" default="true">1|' \
-            -e 's|id="debug_logging" default="false">0|id="debug_logging" default="false">1|' \
-            -e 's|id="PR_LOGGING" default="false">0|id="PR_LOGGING" default="false">1|' \
-            "$ISA_SETTINGS"
-        echo "NOSECUREDECODER=true, debug_logging=1, PR_LOGGING=1"
+    ISA_USER="/storage/.kodi/userdata/addon_data/inputstream.adaptive/settings.xml"
+    if [ -f "$ISA_USER" ]; then
+        cp "$ISA_USER" "${ISA_USER}.bak.$(date +%Y%m%d-%H%M%S)"
+        # NOSECUREDECODER: <setting id="NOSECUREDECODER">true</setting>
+        if grep -q 'id="NOSECUREDECODER"' "$ISA_USER"; then
+            sed -i 's|id="NOSECUREDECODER".*|id="NOSECUREDECODER">true</setting>|' "$ISA_USER"
+        else
+            # Einfügen vor </settings>
+            sed -i 's|</settings>|    <setting id="NOSECUREDECODER">true</setting>\n</settings>|' "$ISA_USER"
+        fi
+        echo "NOSECUREDECODER=true (User-Settings)"
+        grep 'NOSECUREDECODER' "$ISA_USER"
     else
-        echo "settings.xml nicht gefunden — ISA ggf. nicht installiert"
+        echo "ISA-User-Settings nicht gefunden: $ISA_USER"
+        # Fallback: addon-defaults
+        ISA_DEF="/storage/.kodi/addons/inputstream.adaptive/resources/settings.xml"
+        if [ -f "$ISA_DEF" ]; then
+            echo "Fallback: addon-defaults patchen (empfohlen: ISA zurücksetzen)"
+        fi
     fi
 NSD
 
@@ -114,7 +121,7 @@ sleep 3
 
 while true; do
     GS="/storage/.kodi/userdata/guisettings.xml"
-    ISA="/storage/.kodi/addons/inputstream.adaptive/settings.xml"
+    ISA_USER="/storage/.kodi/userdata/addon_data/inputstream.adaptive/settings.xml"
     CR="/storage/.kodi/addons/plugin.video.crunchyroll/resources/lib/videoplayer.py"
 
     # 1. guisettings.xml: Pixel Shaders + SW-Decode
@@ -126,12 +133,10 @@ while true; do
         -e 's|videoplayer.usemediacodecsurface" default="true">true</setting>|videoplayer.usemediacodecsurface" default="false">false</setting>|' \
         "$GS" 2>/dev/null || true
 
-    # 2. ISA-Settings: NOSECUREDECODER + Debug-Logging
-    [ -f "$ISA" ] && sed -i \
-        -e 's|id="NOSECUREDECODER" default="true">0|id="NOSECUREDECODER" default="true">1|' \
-        -e 's|id="debug_logging" default="false">0|id="debug_logging" default="false">1|' \
-        -e 's|id="PR_LOGGING" default="false">0|id="PR_LOGGING" default="false">1|' \
-        "$ISA" 2>/dev/null || true
+    # 2. ISA-User-Settings: NOSECUREDECODER=true
+    [ -f "$ISA_USER" ] && sed -i \
+        -e 's|id="NOSECUREDECODER".*|id="NOSECUREDECODER">true</setting>|' \
+        "$ISA_USER" 2>/dev/null || true
 
     # 3. Crunchyroll: force_secure_decoder entfernen
     [ -f "$CR" ] && sed -i \
