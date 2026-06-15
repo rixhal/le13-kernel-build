@@ -1,0 +1,23 @@
+# LibreELEC Gaming AP Config Extensions
+# Diese Einstellungen optimieren das System für Gaming-AP-Betrieb
+
+# Performance & Stabilität
+arm_boost=1
+gpu_mem=256
+over_voltage=6
+arm_freq=1800
+
+# WiFi Optimierungen
+dtparam=i2c_arm=on
+dtparam=spi=on
+dtoverlay=disable-bt
+
+# Thermal Management (Kühlkörper/Lüfter)
+dtwoverlay=gpio-fan,gpiopin=4,maxtemp=70000,mintemp=40000
+
+# SSH & Network
+enable_uart=1
+
+[all]
+dtparam=audio=on
+hdmi_ignore_cec_init=1

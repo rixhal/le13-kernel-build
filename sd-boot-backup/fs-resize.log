@@ -1,0 +1,7 @@
+2025-06-26T08:44:13+00:00
+/dev/mmcblk0p2 /storage ext4 rw,noatime 0 0
+DISK: /dev/mmcblk0  PART: /dev/mmcblk0p2  LABEL: STORAGE  UUID: 67e94c52-7c1c-4e07-b241-4d3919401f7a
+*** parted -s -f -m /dev/mmcblk0 resizepart 2 100% >>/flash/fs-resize.log 2>&1
+*** mke2fs -F -q -t ext4 -m 0 -L "STORAGE" -U "67e94c52-7c1c-4e07-b241-4d3919401f7a" /dev/mmcblk0p2 >>/flash/fs-resize.log 2>&1
+*** e2fsck -f -p /dev/mmcblk0p2 >>/flash/fs-resize.log 2>&1
+STORAGE: 12/1916928 files (0.0% non-contiguous), 164881/7656576 blocks

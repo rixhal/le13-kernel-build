@@ -1,0 +1,1 @@
+boot=UUID=0111-4635 disk=UUID=67e94c52-7c1c-4e07-b241-4d3919401f7a quiet console=ttyAMA10,115200 console=tty0

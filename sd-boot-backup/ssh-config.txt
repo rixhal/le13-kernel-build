@@ -1,0 +1,11 @@
+# SSH Auto-Configuration für Gaming AP
+# Host Keys werden beim Boot regeneriert
+# SSH Port: 22
+# Auto-Start: JA (aktiviert durch /boot/ssh-enable)
+
+# Sicherheitseinstellungen
+PermitRootLogin yes
+PubkeyAuthentication yes
+PasswordAuthentication yes
+X11Forwarding no
+AllowTcpForwarding yes
